@@ -20,14 +20,15 @@
       "category": "Network",
       "icon": "assets/icons",
       "maintainer": "wizardracoon",
+      "executableName": "messenger",
       "desktop": {
         "Name": "Messenger",
         "Comment": "An Electron app wrapping Facebook Messenger",
         "Icon": "messenger",
-        "executableName": "/usr/bin/messenger %U",
         "Type": "Application",
         "Categories": "Network;Chat;",
-        "Terminal": "false"
+        "Terminal": "false",
+        "StartupWMClass": "messenger"
       }
     }
   }

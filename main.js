@@ -1,14 +1,14 @@
-const { app, session, BrowserWindow, Tray, Menu } = require('electron');
+const { app, session, BrowserWindow, Tray, Menu, Notification } = require('electron');
 const path = require('path');
 
 let mainWindow;
 let tray = null; // Tray instance
 
 app.on('ready', () => {
-  // Set permission request handler for notifications
+  // Set permission request handler for notifications and media
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-    if (permission === 'notifications') {
-      callback(true); // Allow notifications
+    if (['notifications', 'media', 'mediaKeySystem'].includes(permission)) {
+      callback(true); // Allow permissions for notifications, microphone, and webcam
     } else {
       callback(false); // Deny other permissions
     }
@@ -66,9 +66,20 @@ app.on('ready', () => {
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+
+  const notification = new Notification({
+    title: 'Messenger',
+    body: 'Messenger is ready!',
+    icon: path.join(__dirname, 'assets/icons/icon.png'), // Use your icon path
+  });
+  notification.on('click', () => {
+    mainWindow.show();
+  });
+  notification.show();
 });
 
 app.on('before-quit', () => {
+  if (tray) tray.destroy();
   app.isQuitting = true; // Allow app to quit fully
 });
 
