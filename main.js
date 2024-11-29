@@ -89,6 +89,26 @@ app.on('window-all-closed', () => {
   }
 });
 
+app.on('web-contents-created', (event, contents) => {
+  contents.on('new-window', (event, url) => {
+    event.preventDefault();
+    // Prevent new windows and open URLs in the default browser instead
+    require('electron').shell.openExternal(url);
+  });
+
+  contents.on('did-create-window', () => {
+    contents.on('select-bluetooth-device', (event) => {
+      event.preventDefault();
+    });
+  });
+
+  contents.on('notification-click', () => {
+    if (mainWindow) {
+      mainWindow.show();
+    }
+  });
+});
+
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0 && !mainWindow) {
     mainWindow = new BrowserWindow({
