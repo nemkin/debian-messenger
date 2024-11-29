@@ -1,8 +1,20 @@
-const { app, BrowserWindow } = require('electron');
+const { app, session, BrowserWindow, Tray, Menu } = require('electron');
+const path = require('path');
 
 let mainWindow;
+let tray = null; // Tray instance
 
 app.on('ready', () => {
+  // Set permission request handler for notifications
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (permission === 'notifications') {
+      callback(true); // Allow notifications
+    } else {
+      callback(false); // Deny other permissions
+    }
+  });
+
+  // Create the main window
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -10,18 +22,54 @@ app.on('ready', () => {
       contextIsolation: true,
       enableRemoteModule: false,
       nodeIntegration: false,
+      webSecurity: true,
     },
   });
 
-  // Load Facebook Messenger
   mainWindow.loadURL('https://www.messenger.com');
-
-  // Remove the default menu for a cleaner UI
   mainWindow.setMenu(null);
 
+  // Create tray icon
+  const iconPath = path.join(__dirname, 'assets/icons/icon.png');
+  tray = new Tray(iconPath);
+
+  // Tray menu
+  const trayMenu = Menu.buildFromTemplate([
+    {
+      label: 'Show Messenger',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.show();
+        }
+      },
+    },
+    {
+      label: 'Quit',
+      click: () => {
+        app.quit();
+      },
+    },
+  ]);
+
+  tray.setContextMenu(trayMenu);
+  tray.setToolTip('Messenger');
+
+  // Handle close to tray
+  mainWindow.on('close', (event) => {
+    if (!app.isQuitting) {
+      event.preventDefault(); // Prevent window from closing
+      mainWindow.hide(); // Minimize to tray
+    }
+  });
+
+  // Ensure proper cleanup
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+});
+
+app.on('before-quit', () => {
+  app.isQuitting = true; // Allow app to quit fully
 });
 
 app.on('window-all-closed', () => {
@@ -31,7 +79,18 @@ app.on('window-all-closed', () => {
 });
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    mainWindow = new BrowserWindow();
+  if (BrowserWindow.getAllWindows().length === 0 && !mainWindow) {
+    mainWindow = new BrowserWindow({
+      width: 1200,
+      height: 800,
+      webPreferences: {
+        contextIsolation: true,
+        enableRemoteModule: false,
+        nodeIntegration: false,
+        webSecurity: true,
+      },
+    });
+    mainWindow.loadURL('https://www.messenger.com');
+    mainWindow.setMenu(null);
   }
 });

@@ -1,5 +1,5 @@
 {
-  "name": "debian-messenger",
+  "name": "messenger",
   "version": "1.0.0",
   "description": "An Electron app wrapping Facebook Messenger",
   "main": "main.js",
@@ -14,12 +14,21 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "com.example.messengerwrapper",
+    "appId": "com.example.messenger",
     "linux": {
       "target": "deb",
       "category": "Network",
       "icon": "assets/icons",
-      "maintainer": "wizardracoon"
+      "maintainer": "wizardracoon",
+      "desktop": {
+        "Name": "Messenger",
+        "Comment": "An Electron app wrapping Facebook Messenger",
+        "Icon": "messenger",
+        "executableName": "/usr/bin/messenger %U",
+        "Type": "Application",
+        "Categories": "Network;Chat;",
+        "Terminal": "false"
+      }
     }
   }
 }
