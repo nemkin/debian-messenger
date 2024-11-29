@@ -9,11 +9,9 @@
   },
   "author": "wizardracoon",
   "license": "MIT",
-  "dependencies": {
-    "electron": "^latest"
-  },
   "devDependencies": {
-    "electron-builder": "^latest"
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
   },
   "build": {
     "appId": "com.example.messengerwrapper",
