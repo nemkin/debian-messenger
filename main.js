@@ -27,7 +27,7 @@ app.on('ready', () => {
   });
 
   mainWindow.loadURL('https://www.messenger.com');
-  // mainWindow.setMenu(null);
+  mainWindow.setMenu(null);
 
   // Create tray icon
   const iconPath = path.join(__dirname, 'assets/icons/icon.png');
