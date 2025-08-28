@@ -1,20 +1,10 @@
-const { app, session, BrowserWindow, Tray, Menu, Notification } = require('electron');
+const { app, session, BrowserWindow, Tray, Menu, Notification, shell } = require('electron');
 const path = require('path');
 
 let mainWindow;
-let tray = null; // Tray instance
+let tray = null;
 
-app.on('ready', () => {
-  // Set permission request handler for notifications and media
-  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
-    if (['notifications', 'media', 'mediaKeySystem'].includes(permission)) {
-      callback(true); // Allow permissions for notifications, microphone, and webcam
-    } else {
-      callback(false); // Deny other permissions
-    }
-  });
-
-  // Create the main window
+function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -23,105 +13,84 @@ app.on('ready', () => {
       enableRemoteModule: false,
       nodeIntegration: false,
       webSecurity: true,
+      // Optional but recommended for consistent window.open behavior:
+      nativeWindowOpen: true,
     },
   });
 
-  mainWindow.loadURL('https://www.messenger.com');
+  const HOME_URL = 'https://www.messenger.com';
+  mainWindow.loadURL(HOME_URL);
   mainWindow.setMenu(null);
 
-  // Create tray icon
+  // 🔑 Block popups and open in default browser instead
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    // Allow in-app windows only for URLs you trust (Messenger auth flows, etc.)
+    const allowed = new URL(url).hostname.endsWith('.messenger.com')
+                  || new URL(url).hostname.endsWith('.facebook.com');
+
+    if (allowed) return { action: 'allow' }; // keep login/auth dialogs if needed
+
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  // Optional: prevent full navigations away from Messenger
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    const host = new URL(url).hostname;
+    const sameApp = host.endsWith('.messenger.com') || host.endsWith('.facebook.com');
+    if (!sameApp) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
+
+  // Close → hide to tray
+  mainWindow.on('close', (event) => {
+    if (!app.isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+  });
+
+  mainWindow.on('closed', () => { mainWindow = null; });
+}
+
+app.on('ready', () => {
+  // Permissions
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    callback(['notifications', 'media', 'mediaKeySystem'].includes(permission));
+  });
+
+  createMainWindow();
+
+  // Tray
   const iconPath = path.join(__dirname, 'assets/icons/icon.png');
   tray = new Tray(iconPath);
-
-  // Tray menu
   const trayMenu = Menu.buildFromTemplate([
-    {
-      label: 'Show Messenger',
-      click: () => {
-        if (mainWindow) {
-          mainWindow.show();
-        }
-      },
-    },
-    {
-      label: 'Quit',
-      click: () => {
-        app.quit();
-      },
-    },
+    { label: 'Show Messenger', click: () => mainWindow?.show() },
+    { label: 'Quit', click: () => { app.isQuitting = true; app.quit(); } },
   ]);
-
   tray.setContextMenu(trayMenu);
   tray.setToolTip('Messenger');
 
-  // Handle close to tray
-  mainWindow.on('close', (event) => {
-    if (!app.isQuitting) {
-      event.preventDefault(); // Prevent window from closing
-      mainWindow.hide(); // Minimize to tray
-    }
-  });
-
-  // Ensure proper cleanup
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-  });
-
+  // Ready notification
   const notification = new Notification({
     title: 'Messenger',
     body: 'Messenger is ready!',
-    icon: path.join(__dirname, 'assets/icons/icon.png'), // Use your icon path
+    icon: iconPath,
   });
-  notification.on('click', () => {
-    mainWindow.show();
-  });
+  notification.on('click', () => mainWindow?.show());
   notification.show();
 });
 
-app.on('before-quit', () => {
-  if (tray) tray.destroy();
-  app.isQuitting = true; // Allow app to quit fully
-});
+app.on('before-quit', () => { tray?.destroy(); app.isQuitting = true; });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
-
-app.on('web-contents-created', (event, contents) => {
-  contents.on('new-window', (event, url) => {
-    event.preventDefault();
-    // Prevent new windows and open URLs in the default browser instead
-    require('electron').shell.openExternal(url);
-  });
-
-  contents.on('did-create-window', () => {
-    contents.on('select-bluetooth-device', (event) => {
-      event.preventDefault();
-    });
-  });
-
-  contents.on('notification-click', () => {
-    if (mainWindow) {
-      mainWindow.show();
-    }
-  });
+  if (process.platform !== 'darwin') app.quit();
 });
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0 && !mainWindow) {
-    mainWindow = new BrowserWindow({
-      width: 1200,
-      height: 800,
-      webPreferences: {
-        contextIsolation: true,
-        enableRemoteModule: false,
-        nodeIntegration: false,
-        webSecurity: true,
-      },
-    });
-    mainWindow.loadURL('https://www.messenger.com');
-    mainWindow.setMenu(null);
+    createMainWindow();
   }
 });
